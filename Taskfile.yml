@@ -4,37 +4,47 @@ version: '3'
 silent: true
 
 vars:
-  GO_MODULE: <host>/<myname>/chat-service # FIXME
+  GO_MODULE: github.com/dvadert/chat-service
   GO_FILES:
     sh: find . -type f -name '*.go' -not -path "./vendor/*" -not -path "*.gen.go" | tr "\n" " "
+  TOOLS_BIN: "{{.ROOT_DIR}}/tools"
 
-  GOLANGCI_LINT_VERSION: v1.56.2
+  GOLANGCI_LINT_VERSION: v2.15.0
   GOLANGCI_LINT_CACHE:
-    sh: echo "$HOME/Library/Caches" # FIXME
+    sh: echo "$HOME/Library/Caches/golangci-lint"
 
+  # Pinned versions only — never @latest.
   DEV_TOOLS: |
-    github.com/daixiang0/gci@v0.10.1
-    mvdan.cc/gofumpt@v0.4.0
+    github.com/daixiang0/gci@v0.13.5
+    mvdan.cc/gofumpt@v0.7.0
+    github.com/kazhuravlev/options-gen/cmd/options-gen@v0.60.0
 
 tasks:
   default:
     cmds:
-      # FIXME
-      # Последовательно выполняем таски tidy, fmt, lint, tests и build
+      - task: tidy
+      - task: fmt
+      - task: lint
+      - task: tests
+      - task: build
 
   tidy:
-    - echo "- Tidy"
-    - go mod tidy
-    - task: vendor
+    cmds:
+      - echo "- Tidy"
+      - go mod tidy
+      - task: vendor
 
   vendor:
-    - echo "- Vendor"
-    - go mod vendor
+    cmds:
+      - echo "- Vendor"
+      - go mod vendor
 
   fmt:
-    - echo "- Format"
-    - # FIXME: gofumpt + GO_FILES
-    - # FIXME: gci + GO_MODULE + GO_FILES
+    deps: [dev-tools:install]
+    cmds:
+      - echo "- Format"
+      - "{{.TOOLS_BIN}}/gofumpt -l -w {{.GO_FILES}}"
+      - "{{.TOOLS_BIN}}/gci write --skip-generated -s standard -s default -s 'prefix({{.GO_MODULE}})' {{.GO_FILES}}"
 
   lint:
     cmds:
@@ -49,6 +59,7 @@ tasks:
         docker run --rm \
           -v "$(pwd):/app" -w /app \
           -v "{{.GOLANGCI_LINT_CACHE}}:/root/.cache" \
+          -e GOFLAGS="-buildvcs=false" \
           golangci/golangci-lint:{{.GOLANGCI_LINT_VERSION}} \
           golangci-lint {{.CLI_ARGS}}
 
@@ -65,11 +76,17 @@ tasks:
   dev-tools:install:
     cmds:
       - echo "- Install dev tools"
-      - # FIXME
-      - # Устанавливаем наши DEV_TOOLS с помощью `go install`
+      - mkdir -p "{{.TOOLS_BIN}}"
+      - |
+        printf '%s\n' "{{.DEV_TOOLS}}" | while IFS= read -r pkg; do
+          pkg="$(printf '%s' "$pkg" | tr -d '[:space:]')"
+          [ -z "$pkg" ] && continue
+          echo "  go install $pkg"
+          GOBIN="{{.TOOLS_BIN}}" go install "$pkg"
+        done
 
   generate:
-    - echo "Run go generate..."
-    - go generate ./...
-    # Пригодится для выполнения задачи со "звездочкой" ниже. Или попозже.
-
+    deps: [dev-tools:install]
+    cmds:
+      - echo "Run go generate..."
+      - PATH="{{.TOOLS_BIN}}:${PATH}" go generate ./...
