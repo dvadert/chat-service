@@ -1,0 +1,31 @@
+<html>
+	<title>Chat Service Debug</title>
+<body>
+	<h2>Chat Service Debug</h2>
+	<ul>
+	{{range .Pages}}
+		<li><a href="{{.Path}}">{{.Path}}</a> {{.Description}}</li>
+	{{end}}
+	</ul>
+
+	<h2>Log Level</h2>
+	<form onsubmit="putLogLevel(); return false;">
+		<select id="log-level-select">
+		{{range .LogLevels}}
+			<option value="{{.Value}}"{{if eq .Value $.LogLevel}} selected{{end}}>{{.Label}}</option>
+		{{end}}
+		</select>
+		<input type="submit" value="Change">
+	</form>
+
+	<script>
+		function putLogLevel() {
+			const req = new XMLHttpRequest();
+			req.open('PUT', '/log/level', false);
+			req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+			req.onload = function() { window.location.reload(); };
+			req.send('level='+document.getElementById('log-level-select').value);
+		};
+	</script>
+</body>
+</html>
