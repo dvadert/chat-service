@@ -1,0 +1,12 @@
+.DS_Store
+
+.idea/
+.vscode/
+.cursor/
+.env
+tools/
+
+*.out
+*.test
+/chat-service
+configs/config.toml

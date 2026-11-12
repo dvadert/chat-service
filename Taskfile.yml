@@ -1,0 +1,75 @@
+# https://taskfile.dev
+version: '3'
+
+silent: true
+
+vars:
+  GO_MODULE: <host>/<myname>/chat-service # FIXME
+  GO_FILES:
+    sh: find . -type f -name '*.go' -not -path "./vendor/*" -not -path "*.gen.go" | tr "\n" " "
+
+  GOLANGCI_LINT_VERSION: v1.56.2
+  GOLANGCI_LINT_CACHE:
+    sh: echo "$HOME/Library/Caches" # FIXME
+
+  DEV_TOOLS: |
+    github.com/daixiang0/gci@v0.10.1
+    mvdan.cc/gofumpt@v0.4.0
+
+tasks:
+  default:
+    cmds:
+      # FIXME
+      # Последовательно выполняем таски tidy, fmt, lint, tests и build
+
+  tidy:
+    - echo "- Tidy"
+    - go mod tidy
+    - task: vendor
+
+  vendor:
+    - echo "- Vendor"
+    - go mod vendor
+
+  fmt:
+    - echo "- Format"
+    - # FIXME: gofumpt + GO_FILES
+    - # FIXME: gci + GO_MODULE + GO_FILES
+
+  lint:
+    cmds:
+      - echo "- Lint"
+      - mkdir -p {{.GOLANGCI_LINT_CACHE}}
+      - task: lint:cmd
+        vars: {CLI_ARGS: "run -v --fix --timeout=5m ./..."}
+
+  lint:cmd:
+    cmds:
+      - |
+        docker run --rm \
+          -v "$(pwd):/app" -w /app \
+          -v "{{.GOLANGCI_LINT_CACHE}}:/root/.cache" \
+          golangci/golangci-lint:{{.GOLANGCI_LINT_VERSION}} \
+          golangci-lint {{.CLI_ARGS}}
+
+  tests:
+    cmds:
+      - echo "- Tests"
+      - go test -race ./...
+
+  build:
+    cmds:
+      - echo "- Build"
+      - go build ./cmd/chat-service
+
+  dev-tools:install:
+    cmds:
+      - echo "- Install dev tools"
+      - # FIXME
+      - # Устанавливаем наши DEV_TOOLS с помощью `go install`
+
+  generate:
+    - echo "Run go generate..."
+    - go generate ./...
+    # Пригодится для выполнения задачи со "звездочкой" ниже. Или попозже.
+
